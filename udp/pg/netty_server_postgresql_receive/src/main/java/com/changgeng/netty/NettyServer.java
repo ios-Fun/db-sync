@@ -9,6 +9,7 @@ import io.netty.channel.socket.nio.NioDatagramChannel;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -26,7 +27,9 @@ import java.net.InetSocketAddress;
 @Order(2)
 public class NettyServer {
     String remoteHost = "192.168.0.58";
-    int port = 8888;
+
+    @Value("${udp.port}")
+    public Integer port;
 
     private Channel channel;
     EventLoopGroup workerGroup;
