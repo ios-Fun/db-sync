@@ -43,6 +43,7 @@ public class NettyServer {
     @PostConstruct
     public void start() throws InterruptedException {
         dbTableService.getPrimaryKey();
+        dbTableService.getAllColumn();
         log.info("netty server start");
         workerGroup = new NioEventLoopGroup();
 

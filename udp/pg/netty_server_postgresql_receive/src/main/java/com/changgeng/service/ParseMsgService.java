@@ -63,7 +63,7 @@ public class ParseMsgService {
 
         } catch (Exception e) {
             log.error("处理Debezium消息失败: " + e.getMessage());
-            return false;
+            return true;
         }
     }
 
@@ -117,11 +117,17 @@ public class ParseMsgService {
             String column = field.getKey();
 
             JsonNode valueNode = field.getValue();
+
+            String columnType = dbTableService.columnsMap.get(table).get(column);
+            // 去掉时间列
+            if (columnType.startsWith("timestamp")) {
+                continue;
+            }
             setClauses.add(column + " = ?");
             values.add(getValueFromJsonNode(valueNode));
         }
 
-        // 构建SQL，使用id作为条件
+        // 构建SQL，不使用主键
         String sql = "select * from " + table + " where " +
                 String.join(" and ", setClauses) +
                 " limit 1";
@@ -188,7 +194,13 @@ public class ParseMsgService {
                 placeholders.append(", ");
             }
             columns.append(field);
-            placeholders.append("?");
+            String columnType = dbTableService.columnsMap.get(table).get(field);
+            if (columnType.startsWith("timestamp")) {
+                placeholders.append("(to_timestamp(? / 1000000.0) AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Shanghai'");
+            }else {
+                placeholders.append("?");
+            }
+
         });
 
         String sql = String.format("INSERT INTO %s (%s) VALUES (%s)",
@@ -198,7 +210,13 @@ public class ParseMsgService {
             conn = druidDataSource.getConnection();
             PreparedStatement pstmt = conn.prepareStatement(sql);
             int index = 1;
-            for (JsonNode value : data) {
+//            for (JsonNode value : data) {
+//                setPreparedStatementValue(pstmt, index++, value);
+//            }
+            for (Iterator<Map.Entry<String, JsonNode>> it = data.fields(); it.hasNext(); ) {
+                Map.Entry<String, JsonNode> entry = it.next();
+                String key = entry.getKey();
+                JsonNode value = entry.getValue();
                 setPreparedStatementValue(pstmt, index++, value);
             }
             log.info("handleInsert sql: {}", pstmt);
@@ -275,7 +293,12 @@ public class ParseMsgService {
             }
 
             JsonNode valueNode = field.getValue();
-            setClauses.add(column + " = ?");
+            String columnType = dbTableService.columnsMap.get(table).get(column);
+            if (columnType.startsWith("timestamp")) {
+                setClauses.add(column + " = (to_timestamp(? / 1000000.0) AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Shanghai'");
+            }else {
+                setClauses.add(column + " = ?");
+            }
             values.add(getValueFromJsonNode(valueNode));
         }
 
@@ -395,6 +418,11 @@ public class ParseMsgService {
             String column = field.getKey();
 
             JsonNode valueNode = field.getValue();
+            String columnType = dbTableService.columnsMap.get(table).get(column);
+            // 去掉时间列
+            if (columnType.startsWith("timestamp")) {
+                continue;
+            }
             setClauses.add(column + " = ?");
             values.add(getValueFromJsonNode(valueNode));
         }
@@ -514,5 +542,6 @@ public class ParseMsgService {
             // 对于其他类型，转换为字符串
             pstmt.setString(index, value.toString());
         }
+
     }
 }
