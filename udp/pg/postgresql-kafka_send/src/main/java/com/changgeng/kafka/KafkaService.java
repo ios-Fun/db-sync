@@ -25,15 +25,19 @@ public class KafkaService {
     @Value("${spring.kafka.consumer.auto-offset-reset}")
     String autoOffsetReset;
 
+    @Value("$(udp.ask)")
+    public Boolean udpAsk;
+
     @Autowired
     private NettyClient nettyClient;
+
 
     // @PostConstruct
     public void startKafka() {
 
         String groupId = "sync-group";
         String topicPatten = "sync.*";
-        kafkaConsumerThread = new KafkaConsumerThread(bootstrapServers, groupId, topicPatten, autoOffsetReset, nettyClient);
+        kafkaConsumerThread = new KafkaConsumerThread(bootstrapServers, groupId, topicPatten, autoOffsetReset,udpAsk, nettyClient);
         Thread thread = new Thread(kafkaConsumerThread);
         thread.start();
     }

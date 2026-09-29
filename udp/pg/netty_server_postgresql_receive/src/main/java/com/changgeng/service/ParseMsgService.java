@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.sql.DataSource;
@@ -20,11 +21,15 @@ import java.util.Map;
  */
 @Service
 @Slf4j
+
 public class ParseMsgService {
 
     @Qualifier("dao")
     @Autowired
     DataSource druidDataSource;
+
+    @Value("$(udp.ask)")
+    public Boolean udpAsk;
     ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired

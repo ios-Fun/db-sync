@@ -37,8 +37,10 @@ public class KafkaConsumerThread implements Runnable {
     private String lastNettyMsg = null;
     private long lastNettyTime = 0;
 
+    Boolean udpAsk = Boolean.FALSE;
+
     // 构造方法接收主题数组
-    public KafkaConsumerThread(String bootstrapServers, String groupId, String topicPatten, String autoOffsetReset, NettyClient nettyClient) {
+    public KafkaConsumerThread(String bootstrapServers, String groupId, String topicPatten, String autoOffsetReset, Boolean udpAsk, NettyClient nettyClient) {
         // 配置Kafka消费者属性
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
@@ -51,6 +53,7 @@ public class KafkaConsumerThread implements Runnable {
         this.consumer = new KafkaConsumer<>(props);
         this.topicPatten = topicPatten; // 将数组转换为List
         this.nettyClient = nettyClient;
+        this.udpAsk = udpAsk;
     }
 
     private void kafkaCommit() {
@@ -70,81 +73,119 @@ public class KafkaConsumerThread implements Runnable {
 
             // 持续消费消息，直到被停止
             while (isRunning) {
-                // 收到server应答后，需要commit
-                if (receiveIndex.get() > 0 ) {
-                    if (this.consumer != null) {
-                        log.info("commitAsync");
-                        this.kafkaCommit();
+                if (udpAsk) {
+                    // 收到server应答后，需要commit
+                    if (receiveIndex.get() > 0 ) {
+                        if (this.consumer != null) {
+                            log.info("commitAsync");
+                            this.kafkaCommit();
+                        }
                     }
-                }
-                // 是否要拉取新的消息
-                if (produceIndex.get() <= 0 ) {
-                    // 是否有上一次未成功的消息
-                    if (lastNettyMsg != null) {
-                        Thread.sleep(10000);
-                        processMessage(lastNettyMsg);
+                    // 是否要拉取新的消息
+                    if (produceIndex.get() <= 0 ) {
+                        // 是否有上一次未成功的消息
+                        if (lastNettyMsg != null) {
+                            Thread.sleep(10000);
+                            processMessage(lastNettyMsg);
+                        }else {
+                            // 从kafka拉取新的消息，拉取消息，超时时间设置为1秒
+                            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(1000));
+                            for (ConsumerRecord<String, String> record : records) {
+                                // 处理接收到的消息，显示具体来自哪个主题
+                                if (record.value() == null) {
+                                    consumer.commitAsync();
+                                    receiveIndex.set(0);
+                                    lastNettyMsg = null;
+                                    lastNettyTime = 0;
+                                    continue;
+                                }
+                                log.info("收到消息: value = {}", record.value());
+                                // 对kafka数据精简
+
+                                ObjectMapper objectMapper = new ObjectMapper();
+                                Map<String, Object> mapKafka = objectMapper.readValue(record.value(), Map.class);
+
+
+                                Map payload = (Map<String, Object>)mapKafka.get("payload");
+
+                                if (payload != null && payload.get("op").equals("r")) {
+                                    this.kafkaCommit();
+                                    continue;
+                                }
+                                if (payload == null) {
+                                    payload = mapKafka;
+                                }
+                                // 提取事件基本信息
+                                Map<String, Object> before = (Map<String, Object>) payload.get("before");
+                                Map<String, Object> after = (Map<String, Object>) payload.get("after");
+                                String op = (String) payload.get("op");
+                                Map<String, Object> source = (Map<String, Object>) payload.get("source");
+                                String table = null;
+                                if (source != null) {
+                                    table = (String) source.get("table");
+                                }
+                                Map<String, Object> mapNetty = new HashMap<>();
+                                mapNetty.put("b", before);
+                                mapNetty.put("a", after);
+                                mapNetty.put("o", op);
+                                mapNetty.put("t", table);
+                                String jsonNetty = objectMapper.writeValueAsString(mapNetty);
+                                // String jsonNetty = gson.toJson(mapNetty);
+                                // 在这里可以添加自己的消息处理逻辑
+                                processMessage(jsonNetty);
+                                lastNettyMsg = jsonNetty;
+                                lastNettyTime = System.currentTimeMillis();
+                                produceIndex.set(1);
+
+                            }
+                        }
                     }else {
-                        // 从kafka拉取新的消息，拉取消息，超时时间设置为1秒
-                        ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(1000));
-                        for (ConsumerRecord<String, String> record : records) {
-                            // 处理接收到的消息，显示具体来自哪个主题
-                            if (record.value() == null) {
-                                consumer.commitAsync();
-                                receiveIndex.set(0);
-                                lastNettyMsg = null;
-                                lastNettyTime = 0;
-                                continue;
-                            }
-                            log.info("收到消息: value = {}", record.value());
-                            // 对kafka数据精简
-
-                            ObjectMapper objectMapper = new ObjectMapper();
-                            Map<String, Object> mapKafka = objectMapper.readValue(record.value(), Map.class);
-
-
-                            Map payload = (Map<String, Object>)mapKafka.get("payload");
-
-                            if (payload != null && payload.get("op").equals("r")) {
-                                this.kafkaCommit();
-                                continue;
-                            }
-                            if (payload == null) {
-                                payload = mapKafka;
-                            }
-                            // 提取事件基本信息
-                            Map<String, Object> before = (Map<String, Object>) payload.get("before");
-                            Map<String, Object> after = (Map<String, Object>) payload.get("after");
-                            String op = (String) payload.get("op");
-                            Map<String, Object> source = (Map<String, Object>) payload.get("source");
-                            String table = null;
-                            if (source != null) {
-                                table = (String) source.get("table");
-                            }
-                            Map<String, Object> mapNetty = new HashMap<>();
-                            mapNetty.put("b", before);
-                            mapNetty.put("a", after);
-                            mapNetty.put("o", op);
-                            mapNetty.put("t", table);
-                            String jsonNetty = objectMapper.writeValueAsString(mapNetty);
-                            // String jsonNetty = gson.toJson(mapNetty);
-                            // 在这里可以添加自己的消息处理逻辑
-                            processMessage(jsonNetty);
-                            lastNettyMsg = jsonNetty;
-                            lastNettyTime = System.currentTimeMillis();
-                            produceIndex.set(1);
-
+                        long currentTimeMillis = System.currentTimeMillis();
+                        // 如果超时20s没有收到应答
+                        if (lastNettyTime != 0 && (currentTimeMillis - lastNettyTime) > (long)20000) {
+                            produceIndex.set(0);
+                            receiveIndex.set(0);
+                            lastNettyTime = currentTimeMillis;
                         }
                     }
                 }else {
-                    long currentTimeMillis = System.currentTimeMillis();
-                    // 如果超时20s没有收到应答
-                    if (lastNettyTime != 0 && (currentTimeMillis - lastNettyTime) > (long)20000) {
-                        produceIndex.set(0);
-                        receiveIndex.set(0);
-                        lastNettyTime = currentTimeMillis;
+                    ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(1000));
+                    for (ConsumerRecord<String, String> record : records) {
+                        log.info("收到消息1: value = {}", record.value());
+                        ObjectMapper objectMapper = new ObjectMapper();
+                        Map<String, Object> mapKafka = objectMapper.readValue(record.value(), Map.class);
+
+
+                        Map payload = (Map<String, Object>)mapKafka.get("payload");
+
+                        if (payload != null && payload.get("op").equals("r")) {
+                            consumer.commitAsync();
+                            continue;
+                        }
+                        if (payload == null) {
+                            payload = mapKafka;
+                        }
+                        // 提取事件基本信息
+                        Map<String, Object> before = (Map<String, Object>) payload.get("before");
+                        Map<String, Object> after = (Map<String, Object>) payload.get("after");
+                        String op = (String) payload.get("op");
+                        Map<String, Object> source = (Map<String, Object>) payload.get("source");
+                        String table = null;
+                        if (source != null) {
+                            table = (String) source.get("table");
+                        }
+                        Map<String, Object> mapNetty = new HashMap<>();
+                        mapNetty.put("b", before);
+                        mapNetty.put("a", after);
+                        mapNetty.put("o", op);
+                        mapNetty.put("t", table);
+                        String jsonNetty = objectMapper.writeValueAsString(mapNetty);
+                        // String jsonNetty = gson.toJson(mapNetty);
+                        // 在这里可以添加自己的消息处理逻辑
+                        processMessage(jsonNetty);
+                        consumer.commitAsync();
                     }
                 }
-
             }
         } catch (Exception e) {
             log.error("消费消息时发生错误: " + e.getMessage());
