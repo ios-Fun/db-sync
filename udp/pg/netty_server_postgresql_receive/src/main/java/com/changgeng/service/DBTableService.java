@@ -35,6 +35,12 @@ public class DBTableService {
     // 所有的列的类型
     Map<String, Map<String, String>> columnsMap = new HashMap<>();
 
+    @PostConstruct
+    public void init() {
+        getPrimaryKey();
+        getAllColumn();
+    }
+
     public void getPrimaryKey() {
         log.info("getPrimaryKey");
         String sql = String.format("SELECT    tc.table_name, kcu.column_name FROM information_schema.table_constraints AS tc JOIN information_schema.constraint_column_usage AS kcu \n" +

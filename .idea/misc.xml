@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ExternalStorageConfigurationManager" enabled="true" />
+  <component name="MavenProjectsManager">
+    <option name="originalFiles">
+      <list>
+        <option value="$PROJECT_DIR$/tcp/pg/postgresql-kafka_tcp_send/pom.xml" />
+        <option value="$PROJECT_DIR$/tcp/pg/netty_server_postgresql_tcp_receive/pom.xml" />
+        <option value="$PROJECT_DIR$/tcp/neo4j/neo4j-kafka_tcp_send/pom.xml" />
+        <option value="$PROJECT_DIR$/tcp/neo4j/netty_server_neo4j_tcp_receive/pom.xml" />
+        <option value="$PROJECT_DIR$/udp/pg/postgresql-kafka_send/pom.xml" />
+        <option value="$PROJECT_DIR$/udp/pg/netty_server_postgresql_receive/pom.xml" />
+        <option value="$PROJECT_DIR$/udp/neo4j/neo4j-kafka/pom.xml" />
+        <option value="$PROJECT_DIR$/udp/neo4j/netty_server_neo4j/pom.xml" />
+      </list>
+    </option>
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_X" default="true" project-jdk-name="21" project-jdk-type="JavaSDK">
+    <output url="file://$PROJECT_DIR$/out" />
+  </component>
+</project>

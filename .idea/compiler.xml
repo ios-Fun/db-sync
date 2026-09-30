@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="demo-kafka (1)" />
+        <module name="demo-kafka (3)" />
+        <module name="demo-kafka (2)" />
+        <module name="demo-kafka (5)" />
+        <module name="neo4j-netty (2)" />
+        <module name="demo-kafka (4)" />
+        <module name="neo4j-netty (1)" />
+        <module name="demo-kafka (6)" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="demo-kafka" target="1.5" />
+      <module name="neo4j-netty" target="1.5" />
+    </bytecodeTargetLevel>
+  </component>
+</project>
