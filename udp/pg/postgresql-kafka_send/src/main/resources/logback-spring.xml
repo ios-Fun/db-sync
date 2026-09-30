@@ -11,7 +11,7 @@
     <!-- Log control module will add 'domainName' and 'requestId' before every event message -->
     <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{50} - %m%n" />
     <property name="LOG_CHARSET" value="utf-8" />
-    <property name="LOG_HOME" value="./logs/neo4j_kafka}" />
+    <property name="LOG_HOME" value="./logs/neo4j_kafka" />
 
 
     <!-- Filter unnecessary log (include 3PP log) in global scenario with debug level -->
